@@ -1,0 +1,65 @@
+name: Build Webview Go
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Go
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20  # Substitua pela versão de Go que você deseja usar
+
+      # Cache Go modules
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      # Install dependencies
+      - name: Install dependencies
+        run: go mod tidy
+
+      # Build the project
+      - name: Build the project
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            go build -ldflags="-H windowsgui" -o app.exe
+          else
+            go build -o app
+          fi
+
+      # Verify the build output
+      - name: Verify build output
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" && ! -f app.exe ]]; then
+            echo "Build failed: app.exe not found."
+            exit 1
+          elif [[ "${{ matrix.os }}" != "windows-latest" && ! -f app ]]; then
+            echo "Build failed: app not found."
+            exit 1
+          else
+            echo "Build successful."
+          fi

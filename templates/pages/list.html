@@ -1,0 +1,29 @@
+{{define "content"}}
+<div class="row mb-2">
+   <div class="col-md-12">
+      <div class="pt-3 bg-body">
+         <div class="d-flex text-muted pt-3 border-bottom">
+            <div class="pb-3 mb-0 small lh-sm  w-100">
+               <div class="d-flex justify-content-between">
+                  <h6 class="pb-2 mb-0">Título</h6>
+                  <h6 class="pb-2 mb-0">Total de Comentários</h6>
+               </div>
+            </div>
+         </div>
+         <div id="append-posts"></div>
+      </div>
+   </div>
+
+   <button id="increment">Tap me</button>
+   <div>You tapped <span id="count">0</span> time(s).</div>
+   <script>
+      const [incrementElement, countElement] =
+         document.querySelectorAll("#increment, #count");
+      document.addEventListener("DOMContentLoaded", () => {
+         incrementElement.addEventListener("click", () => {
+            window.setTemplate1();
+         });
+      });
+   </script>
+</div>
+{{end}}
