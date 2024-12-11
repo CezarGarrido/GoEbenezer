@@ -43,7 +43,7 @@ jobs:
 
       - name: Install dev dependencies
         if: contains(matrix.TARGET, 'linux')
-        run: sudo apt update && sudo apt install libgtk-4-1 libwebkitgtk-6.0-4
+        run: sudo apt update && sudo apt install libgtk-3-0 libwebkit2gtk-4.0-37
 
       # Install dependencies
       - name: Install dependencies
