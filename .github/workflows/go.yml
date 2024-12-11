@@ -24,7 +24,9 @@ jobs:
           - os: windows-latest
             TARGET: x86_64-pc-windows-msvc
             EXTENSION: .exe
-
+          - os: windows-latest
+            TARGET: i686-pc-windows-msvc
+            EXTENSION: .exe
     steps:
       - name: Building ${{ matrix.TARGET }}
         run: echo "${{ matrix.TARGET }}"
@@ -41,7 +43,7 @@ jobs:
 
       - name: Install dev dependencies
         if: contains(matrix.TARGET, 'linux')
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.0-dev
+        run: sudo apt update && sudo apt install libgtk-4-1 libwebkitgtk-6.0-4
 
       # Install dependencies
       - name: Install dependencies
