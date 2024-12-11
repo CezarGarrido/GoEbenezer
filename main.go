@@ -1,86 +1,109 @@
 package main
 
 import (
-	"bytes"
-	"embed"
+	"encoding/base64"
 	"fmt"
-	"text/template"
+	"io/ioutil"
+	"log"
+	"path"
+	"runtime"
+	"strings"
+	"time"
 
 	webview "github.com/webview/webview_go"
 )
 
-//go:embed templates
-var content embed.FS
-
-type IncrementResult struct {
-	Count uint `json:"count"`
-}
-
-var baseTemplate *template.Template
-
-// Função para inicializar o template base com todos os templates necessários
-func initBaseTemplate() {
-	baseTemplate = template.New("index")
-
-	// Carregar todos os templates necessários no template base
-	baseTemplate = template.Must(baseTemplate.ParseFS(content,
-		"templates/index.html",
-		"templates/header.html",
-		"templates/footer.html",
-		"templates/pages/initial.html", // Template inicial
-	))
-}
-
-// Função para trocar de template
-func setTemplate(w webview.WebView, templateName string) {
-	// Cria um buffer para armazenar o HTML gerado
-	var buf bytes.Buffer
-
-	_, err := baseTemplate.ParseFS(content, templateName)
-	if err != nil {
-		panic(err)
-	}
-	// Executa o template desejado
-	err = baseTemplate.ExecuteTemplate(&buf, "index", nil)
-	if err != nil {
-		panic(err)
-	}
-
-	// Atualiza a WebView com o conteúdo renderizado
-	//fmt.Println(buf.String())
-	w.SetHtml(buf.String())
-}
+var w webview.WebView
 
 func main() {
-	InjectAssets()
-	var count uint = 0
-	w := webview.New(false)
+	debug := true
+	w = webview.New(debug)
 	defer w.Destroy()
-	w.SetTitle("Bind Example")
-	w.SetSize(480, 320, webview.HintNone)
+	w.SetTitle("Enenezer")
+	w.SetSize(800, 600, webview.HintNone)
+	// Load the start page, index.html
+	w.Navigate("file://" + pathToStartPage())
 
-	// A binding that increments a value and immediately returns the new value.
-	w.Bind("increment", func() IncrementResult {
-		count++
-		return IncrementResult{Count: count}
+	// Expose the Go function printSomething as "ps"
+	// in our WebView window. A JavaScript call to "ps"
+	// will invoke the Go function printSomething.
+	w.Bind("ps", printSomething)
+	w.Bind("routeTo", routeTo)
+
+	w.Bind("loadPdf", func() string {
+		pdfPath := "report.pdf" // Caminho para o PDF
+		data, err := ioutil.ReadFile(pdfPath)
+		if err != nil {
+			log.Printf("Erro ao carregar o PDF: %v", err)
+			return ""
+		}
+
+		log.Printf("Arquivo carregado com sucesso, tamanho: %d bytes", len(data))
+		return base64.StdEncoding.EncodeToString(data)
 	})
 
-	w.Bind("setTemplate", func() {
-		fmt.Println("setTemplate click")
-		// Carregar o template inicial
-		setTemplate(w, "templates/pages/list.html")
+	w.Bind("getWorker", func() string {
+		workerCode, err := ioutil.ReadFile("./app/public/pdf.worker.min.mjs")
+		if err != nil {
+
+			log.Printf("Erro ao carregar o worker: %v", err)
+			return ""
+		}
+
+		return string(workerCode)
 	})
 
-	w.Bind("setTemplate1", func() {
-		fmt.Println("setTemplate click")
-		// Carregar o template inicial
-		setTemplate(w, "templates/pages/initial.html")
-	})
-
-	// Inicializar o template base com todos os templates necessários
-	initBaseTemplate()
-	setTemplate(w, "templates/pages/initial.html")
-
-	//w.Navigate("file:///home/cezar.britez/Development/Go/my-webview/tabler/layout-navbar-sticky.html")
+	// Run the app.
 	w.Run()
+}
+
+// printSomething prints the name from the JavaScript form
+// to STDOUT and back to the WebView HTML page.
+func printSomething(name string) {
+	now := time.Now().Format(time.Stamp)
+	fmt.Println(textMessage(name, now))
+	w.Eval(fmt.Sprintf("setDivContent('output', '%s')", htmlMessage(name, now)))
+}
+
+func routeTo(name string) {
+	now := time.Now().Format(time.Stamp)
+	fmt.Println(textMessage(name, now))
+	w.Eval(fmt.Sprintf("setRouterView('%s', '%s')", name, htmlMessage(name, now)))
+}
+
+// Returns a plain text message to display in the console.
+func textMessage(name, time string) string {
+	return fmt.Sprintf(">>> [%s] Hello, %s.", time, name)
+}
+
+// Returns an HTML message to display in the webview.
+func htmlMessage(name, time string) string {
+	escapedName := strings.ReplaceAll(name, "'", "&#39;")
+	return fmt.Sprintf(`Hello, <b>%s</b>. The current time is <span class="blue">%s</span>. Check your console window for a message.`, escapedName, time)
+}
+
+// pathToStartPage returns the absolute path the index.html page
+// we want to show when the app starts up. This works when we're
+// running the app through 'go run main.go' because runtime.Caller()
+// returns the path of this source file, not the path of the temp
+// file created by 'go run'.
+func pathToStartPage() string {
+	_, currentFile, _, _ := runtime.Caller(0)
+	dir := path.Dir(currentFile)
+	return path.Join(dir, "/app/public/index.html")
+}
+
+func getWorker() {
+	workerCode, err := ioutil.ReadFile("./app/public/pdf.worker.min.mjs")
+	if err != nil {
+		log.Fatalf("Erro ao ler o arquivo do worker: %v", err)
+	}
+
+	// Injetar o código do worker
+	script := fmt.Sprintf(`
+		PDFJS.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob(['%s'], { type: 'application/javascript' }));
+	`, workerCode)
+
+	w.Eval(script)
+
 }
