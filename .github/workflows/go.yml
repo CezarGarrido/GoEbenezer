@@ -25,6 +25,10 @@ jobs:
             TARGET: x86_64-pc-windows-msvc
             EXTENSION: .exe
 
+          - os: windows-latest
+            TARGET: i686-pc-windows-msvc
+            EXTENSION: .exe
+
     steps:
       - name: Building ${{ matrix.TARGET }}
         run: echo "${{ matrix.TARGET }}"
