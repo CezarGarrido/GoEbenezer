@@ -52,10 +52,16 @@ jobs:
         run: go mod tidy
 
       - name: Build the project
-        if: contains(matrix.TARGET, 'windows')
+        if: contains(matrix.TARGET, 'x86_64-pc-windows-msvc')
         run: |
           go build -ldflags="-H windowsgui" -o app-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
-
+      
+      - name: Build the project
+        if: contains(matrix.TARGET, 'i686-pc-windows-msvc')
+        run: |
+          set GOARCH=386
+          go build -ldflags="-H windowsgui" -o app-${{ matrix.TARGET }}${{ matrix.EXTENSION }}
+  
       - name: Build
         if: ${{ !contains(matrix.TARGET, 'windows') }}
         run: |
